@@ -41,7 +41,6 @@ func main() {
 	go listenForMessages(conn)
 
 	// Solicita o nickname do oponente após o próprio nickname ter sido enviado
-	time.Sleep(1 * time.Second) // Pequena pausa para garantir que o servidor processe a primeira mensagem
 	fmt.Print("Digite o nickname do oponente: ")
 	opponent := readInput()
 

@@ -59,51 +59,52 @@ func main() {
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	// Cria um leitor para ler mensagens do cliente
 	reader := bufio.NewReader(conn)
 
 	// Recebe a primeira mensagem do cliente (nickname + oponente)
-	messageStr, err := reader.ReadString('\n')
-	if err != nil {
-		fmt.Println("Erro ao ler mensagem:", err)
-		return
-	}
+	for {
+		messageStr, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Erro ao ler mensagem:", err)
+			return
+		}
 
-	// Deserializa a mensagem
-	var message Message
-	err = json.Unmarshal([]byte(messageStr), &message)
-	if err != nil {
-		fmt.Println("Erro ao deserializar a mensagem:", err)
-		return
-	}
+		var message Message
+		err = json.Unmarshal([]byte(messageStr), &message)
+		if err != nil {
+			fmt.Println("Erro ao deserializar a mensagem:", err)
+			return
+		}
 
-	fmt.Println("Mensagem recebida: ", message)
+		fmt.Println("Mensagem recebida: ", message)
 
-	// Lida com a solicitação de conexão
-	if message.Type == "connect_request" {
-		data := message.Data.(map[string]interface{})
-		nickname := data["nickname"].(string)
+		switch message.Type {
+		case "connect_request":
+			var data map[string]string
+			rawData, _ := json.Marshal(message.Data) // Converte interface{} para JSON
+			json.Unmarshal(rawData, &data)           // Deserializa para map[string]string
 
-		handleConnectRequest(conn, nickname)
-	}
+			nickname := data["nickname"]
+			handleConnectRequest(conn, nickname)
+		case "opponent_request":
+			var data map[string]string
+			rawData, _ := json.Marshal(message.Data)
+			json.Unmarshal(rawData, &data)
 
-	// Lida com a mensagem de oponente
-	if message.Type == "opponent_nickname" {
-		data := message.Data.(map[string]interface{})
-		nickname := data["nickname"].(string)
-		opponentNickname := data["opponent_nickname"].(string)
-
-		handleOpponentNickname(conn, nickname, opponentNickname)
+			nickname := data["nickname"]
+			opponentNickname := data["opponent_nickname"]
+			handleOpponentNickname(conn, nickname, opponentNickname)
+		}
 	}
 }
 
 func handleConnectRequest(conn net.Conn, nickname string) {
 	mutex.Lock()
+	defer mutex.Unlock()
 
 	// Registra o jogador na lista
 	player := &Player{Nickname: nickname, Conn: conn}
 	players[nickname] = player
-	mutex.Unlock()
 
 	// Responde ao jogador que a conexão foi bem-sucedida
 	sendMessage(conn, Message{
@@ -115,7 +116,6 @@ func handleConnectRequest(conn net.Conn, nickname string) {
 	})
 }
 
-// Função para lidar com o oponente
 func handleOpponentNickname(conn net.Conn, nickname, opponentNickname string) {
 	mutex.Lock()
 
@@ -324,5 +324,5 @@ func endGameDueToTimeout(player1, player2 *Player) {
 
 func sendMessage(conn net.Conn, message Message) {
 	messageBytes, _ := json.Marshal(message)
-	conn.Write(append(messageBytes, '\n'))
+	conn.Write(append(messageBytes, '\n')) // Envia a mensagem com nova linha
 }
