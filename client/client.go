@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// Estrutura da mensagem
 type Message struct {
 	Type string      `json:"type"`
 	Data interface{} `json:"data"`
@@ -24,23 +25,33 @@ func main() {
 	}
 	defer conn.Close()
 
-	// Solicita o nickname e o nome do oponente
+	// Solicita o nickname do jogador
 	fmt.Print("Digite seu nickname: ")
 	nickname := readInput()
-	fmt.Print("Digite o nickname do oponente: ")
-	opponent := readInput()
 
-	// Envia a solicitação de conexão para o servidor
+	// Envia a solicitação de conexão para o servidor com o nickname
 	sendMessage(conn, Message{
 		Type: "connect_request",
 		Data: map[string]string{
-			"nickname":          nickname,
-			"opponent_nickname": opponent,
+			"nickname": nickname,
 		},
 	})
 
-	// Inicia a escuta de mensagens do servidor
+	// Recebe a confirmação do servidor antes de continuar
 	go listenForMessages(conn)
+
+	// Solicita o nickname do oponente após o próprio nickname ter sido enviado
+	time.Sleep(1 * time.Second) // Pequena pausa para garantir que o servidor processe a primeira mensagem
+	fmt.Print("Digite o nickname do oponente: ")
+	opponent := readInput()
+
+	// Envia a solicitação para iniciar o jogo com o oponente escolhido
+	sendMessage(conn, Message{
+		Type: "opponent_request",
+		Data: map[string]string{
+			"opponent_nickname": opponent,
+		},
+	})
 
 	// Mantém o cliente rodando
 	for {
@@ -69,6 +80,7 @@ func listenForMessages(conn net.Conn) {
 }
 
 func handleServerMessage(conn net.Conn, message Message) {
+	fmt.Println("message do server: ", message)
 	switch message.Type {
 	case "connect_response":
 		data := message.Data.(map[string]interface{})
@@ -78,6 +90,16 @@ func handleServerMessage(conn net.Conn, message Message) {
 			os.Exit(1)
 		} else {
 			fmt.Println("Conexão estabelecida com sucesso!")
+		}
+
+	case "opponent_response":
+		data := message.Data.(map[string]interface{})
+		status := data["status"].(string)
+		if status == "error" {
+			fmt.Println("Erro:", data["message"])
+			os.Exit(1)
+		} else {
+			fmt.Println("Convite enviado para o oponente.")
 		}
 
 	case "invite_request":

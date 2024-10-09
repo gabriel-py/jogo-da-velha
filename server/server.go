@@ -77,24 +77,54 @@ func handleConnection(conn net.Conn) {
 		return
 	}
 
+	fmt.Println("Mensagem recebida: ", message)
+
 	// Lida com a solicitação de conexão
 	if message.Type == "connect_request" {
 		data := message.Data.(map[string]interface{})
 		nickname := data["nickname"].(string)
+
+		handleConnectRequest(conn, nickname)
+	}
+
+	// Lida com a mensagem de oponente
+	if message.Type == "opponent_nickname" {
+		data := message.Data.(map[string]interface{})
+		nickname := data["nickname"].(string)
 		opponentNickname := data["opponent_nickname"].(string)
 
-		handleConnectRequest(conn, nickname, opponentNickname)
+		handleOpponentNickname(conn, nickname, opponentNickname)
 	}
 }
 
-func handleConnectRequest(conn net.Conn, nickname, opponentNickname string) {
+func handleConnectRequest(conn net.Conn, nickname string) {
 	mutex.Lock()
+
+	// Registra o jogador na lista
+	player := &Player{Nickname: nickname, Conn: conn}
+	players[nickname] = player
+	mutex.Unlock()
+
+	// Responde ao jogador que a conexão foi bem-sucedida
+	sendMessage(conn, Message{
+		Type: "connect_response",
+		Data: map[string]string{
+			"status":  "success",
+			"message": "Usuário conectado com sucesso.",
+		},
+	})
+}
+
+// Função para lidar com o oponente
+func handleOpponentNickname(conn net.Conn, nickname, opponentNickname string) {
+	mutex.Lock()
+
 	// Verifica se o oponente existe
 	opponent, exists := players[opponentNickname]
 	if !exists {
 		// Envia mensagem de erro
 		sendMessage(conn, Message{
-			Type: "connect_response",
+			Type: "opponent_response",
 			Data: map[string]string{
 				"status":  "error",
 				"message": "Player not found.",
@@ -103,11 +133,6 @@ func handleConnectRequest(conn net.Conn, nickname, opponentNickname string) {
 		mutex.Unlock()
 		return
 	}
-
-	// Registra o jogador na lista
-	player := &Player{Nickname: nickname, Conn: conn}
-	players[nickname] = player
-	mutex.Unlock()
 
 	// Envia convite para o oponente
 	sendMessage(opponent.Conn, Message{
@@ -121,11 +146,13 @@ func handleConnectRequest(conn net.Conn, nickname, opponentNickname string) {
 	inviteChan := make(chan bool)
 	inviteWait[opponentNickname] = inviteChan
 
+	mutex.Unlock()
+
 	select {
 	case accepted := <-inviteChan:
 		if accepted {
 			// Inicia o jogo
-			sendMessage(player.Conn, Message{
+			sendMessage(conn, Message{
 				Type: "game_start",
 				Data: map[string]string{
 					"message": "The game has started. Please enter your move: rock, paper, or scissors.",
@@ -138,7 +165,7 @@ func handleConnectRequest(conn net.Conn, nickname, opponentNickname string) {
 				},
 			})
 
-			startGame(player, opponent)
+			startGame(players[nickname], opponent)
 
 		} else {
 			// Envia mensagem de rejeição
