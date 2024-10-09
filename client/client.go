@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"time"
 )
 
 // Estrutura da mensagem
@@ -15,6 +14,13 @@ type Message struct {
 	Type string      `json:"type"`
 	Data interface{} `json:"data"`
 }
+
+// Estrutura para armazenar o convite
+type Invite struct {
+	FromNickname string
+}
+
+var currentInvite *Invite // Variável para armazenar o convite atual
 
 func main() {
 	// Conecta ao servidor
@@ -40,21 +46,40 @@ func main() {
 	// Recebe a confirmação do servidor antes de continuar
 	go listenForMessages(conn)
 
-	// Solicita o nickname do oponente após o próprio nickname ter sido enviado
-	fmt.Print("Digite o nickname do oponente: ")
-	opponent := readInput()
-
-	// Envia a solicitação para iniciar o jogo com o oponente escolhido
-	sendMessage(conn, Message{
-		Type: "opponent_request",
-		Data: map[string]string{
-			"opponent_nickname": opponent,
-		},
-	})
-
-	// Mantém o cliente rodando
+	// Loop principal do cliente
 	for {
-		time.Sleep(1 * time.Second)
+		fmt.Println("\nMenu:")
+		fmt.Println("1. Convidar Oponente")
+		fmt.Println("2. Responder a Convite")
+		fmt.Println("3. Sair")
+		fmt.Print("Escolha uma opção: ")
+
+		option := readInput()
+
+		switch option {
+		case "1":
+			fmt.Print("Digite o nickname do oponente: ")
+			opponent := readInput()
+
+			// Envia a solicitação para iniciar o jogo com o oponente escolhido
+			sendMessage(conn, Message{
+				Type: "opponent_request",
+				Data: map[string]string{
+					"nickname":          nickname,
+					"opponent_nickname": opponent,
+				},
+			})
+
+		case "2":
+			handleResponseToInvite(conn)
+
+		case "3":
+			fmt.Println("Saindo...")
+			return
+
+		default:
+			fmt.Println("Opção inválida, tente novamente.")
+		}
 	}
 }
 
@@ -79,7 +104,7 @@ func listenForMessages(conn net.Conn) {
 }
 
 func handleServerMessage(conn net.Conn, message Message) {
-	fmt.Println("message do server: ", message)
+	fmt.Println("\n\nMensagem do servidor: ", message)
 	switch message.Type {
 	case "connect_response":
 		data := message.Data.(map[string]interface{})
@@ -104,23 +129,10 @@ func handleServerMessage(conn net.Conn, message Message) {
 	case "invite_request":
 		data := message.Data.(map[string]interface{})
 		fromNickname := data["from_nickname"].(string)
-		fmt.Printf("O jogador %s quer jogar com você. Aceitar? (s/n): ", fromNickname)
-		response := readInput()
-		if strings.ToLower(response) == "s" {
-			sendMessage(conn, Message{
-				Type: "invite_response",
-				Data: map[string]bool{
-					"accepted": true,
-				},
-			})
-		} else {
-			sendMessage(conn, Message{
-				Type: "invite_response",
-				Data: map[string]bool{
-					"accepted": false,
-				},
-			})
-		}
+
+		// Armazena o convite recebido
+		currentInvite = &Invite{FromNickname: fromNickname}
+		fmt.Printf("Convite recebido de %s. Você pode responder na opção 2.\n", fromNickname)
 
 	case "game_start":
 		fmt.Println("O jogo começou! Escolha sua jogada: pedra, papel ou tesoura")
@@ -143,6 +155,36 @@ func handleServerMessage(conn net.Conn, message Message) {
 		fmt.Println("O jogo terminou devido à inatividade.")
 		os.Exit(0)
 	}
+}
+
+func handleResponseToInvite(conn net.Conn) {
+	if currentInvite == nil {
+		fmt.Println("Não há convites pendentes no momento.")
+		return
+	}
+
+	// Responde ao convite armazenado
+	fromNickname := currentInvite.FromNickname
+	fmt.Printf("O jogador %s quer jogar com você. Aceitar? (s/n): ", fromNickname)
+
+	response := readInput() // Responde ao convite
+	if strings.ToLower(response) == "s" {
+		sendMessage(conn, Message{
+			Type: "invite_response",
+			Data: map[string]bool{
+				"accepted": true,
+			},
+		})
+	} else {
+		sendMessage(conn, Message{
+			Type: "invite_response",
+			Data: map[string]bool{
+				"accepted": false,
+			},
+		})
+	}
+	// Limpa o convite após responder
+	currentInvite = nil
 }
 
 func sendMessage(conn net.Conn, message Message) {

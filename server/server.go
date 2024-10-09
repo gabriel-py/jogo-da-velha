@@ -148,6 +148,9 @@ func handleOpponentNickname(conn net.Conn, nickname, opponentNickname string) {
 
 	mutex.Unlock()
 
+	fmt.Println("inviteChan: ", inviteChan)
+	fmt.Println("inviteWait: ", inviteWait)
+
 	select {
 	case accepted := <-inviteChan:
 		if accepted {
@@ -176,7 +179,7 @@ func handleOpponentNickname(conn net.Conn, nickname, opponentNickname string) {
 				},
 			})
 		}
-	case <-time.After(15 * time.Second):
+	case <-time.After(120 * time.Second):
 		// Timeout de resposta
 		sendMessage(conn, Message{
 			Type: "invite_rejected",
