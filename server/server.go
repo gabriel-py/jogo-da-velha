@@ -37,6 +37,17 @@ var (
 	inviteWait = make(map[string]chan bool)
 )
 
+type OpponentRequest struct {
+	ID        string
+	Requester string
+	Opponent  string
+}
+
+var (
+	opponentRequests = make(map[string]*OpponentRequest) // Armazena requests pendentes
+	requestCounter   = 0                                 // Contador simples para gerar IDs únicos
+)
+
 func main() {
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
@@ -54,6 +65,11 @@ func main() {
 		}
 		go handleConnection(conn)
 	}
+}
+
+func generateRequestID() string {
+	requestCounter++
+	return fmt.Sprintf("req-%d", requestCounter)
 }
 
 func handleConnection(conn net.Conn) {
@@ -94,8 +110,83 @@ func handleConnection(conn net.Conn) {
 			nickname := data["nickname"]
 			opponentNickname := data["opponent_nickname"]
 			handleOpponentNickname(conn, nickname, opponentNickname)
+		case "invite_response":
+			handleInviteResponse(conn, message)
 		}
 	}
+}
+
+func handleInviteResponse(conn net.Conn, message Message) {
+	// Deserializa os dados da resposta do convite
+	var data map[string]interface{}
+	rawData, _ := json.Marshal(message.Data)
+	json.Unmarshal(rawData, &data)
+
+	// Extrai o request_id e a resposta de aceitação/rejeição
+	requestID := data["request_id"].(string)
+	accepted := data["accepted"].(bool)
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// Busca a solicitação pelo request_id
+	opponentRequest, exists := opponentRequests[requestID]
+	if !exists {
+		// Se o ID da solicitação não for encontrado
+		sendMessage(conn, Message{
+			Type: "error",
+			Data: map[string]string{
+				"message": "Solicitação de oponente não encontrada.",
+			},
+		})
+		return
+	}
+
+	// Verifica se o convite foi aceito
+	if accepted {
+		// Iniciar o jogo entre o jogador e o oponente
+		player := players[opponentRequest.Requester]
+		opponent := players[opponentRequest.Opponent]
+
+		if player == nil || opponent == nil {
+			// Caso algum jogador tenha desconectado
+			sendMessage(conn, Message{
+				Type: "error",
+				Data: map[string]string{
+					"message": "Jogador ou oponente desconectado.",
+				},
+			})
+			return
+		}
+
+		// Inicia o jogo
+		sendMessage(player.Conn, Message{
+			Type: "game_start",
+			Data: map[string]string{
+				"message": "O jogo começou! Faça sua jogada: pedra, papel ou tesoura.",
+			},
+		})
+		sendMessage(opponent.Conn, Message{
+			Type: "game_start",
+			Data: map[string]string{
+				"message": "O jogo começou! Faça sua jogada: pedra, papel ou tesoura.",
+			},
+		})
+
+		startGame(player, opponent)
+
+	} else {
+		// Envia a mensagem de rejeição ao jogador que fez o convite
+		sendMessage(players[opponentRequest.Requester].Conn, Message{
+			Type: "invite_rejected",
+			Data: map[string]string{
+				"message": "O jogador " + opponentRequest.Opponent + " recusou seu convite.",
+			},
+		})
+	}
+
+	// Remove a solicitação do map após o processamento
+	delete(opponentRequests, requestID)
 }
 
 func handleConnectRequest(conn net.Conn, nickname string) {
@@ -134,22 +225,33 @@ func handleOpponentNickname(conn net.Conn, nickname, opponentNickname string) {
 		return
 	}
 
-	// Envia convite para o oponente
+	// Gerar um id único para esta solicitação
+	requestID := generateRequestID()
+
+	// Cria a solicitação e armazena no map
+	opponentRequest := &OpponentRequest{
+		ID:        requestID,
+		Requester: nickname,
+		Opponent:  opponentNickname,
+	}
+	opponentRequests[requestID] = opponentRequest
+
+	// Envia o convite para o oponente, incluindo o requestID
 	sendMessage(opponent.Conn, Message{
 		Type: "invite_request",
-		Data: InviteData{
-			FromNickname: nickname,
+		Data: map[string]string{
+			"from_nickname": nickname,
+			"request_id":    requestID, // Enviar o ID da solicitação
 		},
 	})
 
-	// Cria um canal para o convite e aguarda a resposta
+	// Cria um canal para aguardar a resposta do convite
 	inviteChan := make(chan bool)
 	inviteWait[opponentNickname] = inviteChan
 
 	mutex.Unlock()
 
-	fmt.Println("inviteChan: ", inviteChan)
-	fmt.Println("inviteWait: ", inviteWait)
+	fmt.Println("Solicitação de oponente enviada. requestID:", requestID)
 
 	select {
 	case accepted := <-inviteChan:
@@ -158,13 +260,13 @@ func handleOpponentNickname(conn net.Conn, nickname, opponentNickname string) {
 			sendMessage(conn, Message{
 				Type: "game_start",
 				Data: map[string]string{
-					"message": "The game has started. Please enter your move: rock, paper, or scissors.",
+					"message": "O jogo começou! Faça sua jogada: pedra, papel ou tesoura.",
 				},
 			})
 			sendMessage(opponent.Conn, Message{
 				Type: "game_start",
 				Data: map[string]string{
-					"message": "The game has started. Please enter your move: rock, paper, or scissors.",
+					"message": "O jogo começou! Faça sua jogada: pedra, papel ou tesoura.",
 				},
 			})
 

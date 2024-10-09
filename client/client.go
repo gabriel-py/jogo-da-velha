@@ -18,6 +18,7 @@ type Message struct {
 // Estrutura para armazenar o convite
 type Invite struct {
 	FromNickname string
+	RequestID    string
 }
 
 var currentInvite *Invite // Variável para armazenar o convite atual
@@ -129,9 +130,10 @@ func handleServerMessage(conn net.Conn, message Message) {
 	case "invite_request":
 		data := message.Data.(map[string]interface{})
 		fromNickname := data["from_nickname"].(string)
+		requestID := data["request_id"].(string)
 
 		// Armazena o convite recebido
-		currentInvite = &Invite{FromNickname: fromNickname}
+		currentInvite = &Invite{FromNickname: fromNickname, RequestID: requestID}
 		fmt.Printf("Convite recebido de %s. Você pode responder na opção 2.\n", fromNickname)
 
 	case "game_start":
@@ -171,8 +173,9 @@ func handleResponseToInvite(conn net.Conn) {
 	if strings.ToLower(response) == "s" {
 		sendMessage(conn, Message{
 			Type: "invite_response",
-			Data: map[string]bool{
-				"accepted": true,
+			Data: map[string]interface{}{
+				"request_id": currentInvite.RequestID,
+				"accepted":   true,
 			},
 		})
 	} else {
