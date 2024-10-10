@@ -1,1 +1,227 @@
-Sistema distribuído em Golang de um jogo de pedra, papel e tesoura, implementado para um trabalho da disciplina de Redes de Computadores do 4 semestre do curso de Sistemas de Informação da Universidade de São Paulo (USP). Este repositório contém a implementação do cliente e do servidor do projeto.
+### Mensagens do Servidor para o Cliente:
+
+1. Mensagem de Conexão Bem-Sucedida
+
+Tipo: `connect_response`
+
+Descrição: Enviada quando um jogador se conecta com sucesso ao servidor.
+
+Exemplo:
+```json
+{
+  "type": "connect_response",
+  "data": {
+    "status": "success",
+    "message": "Usuário conectado com sucesso."
+  }
+}
+```
+
+2. Mensagem de Convite para Jogo
+
+Tipo: `invite_request`
+
+Descrição: Enviada para o oponente convidado, informando que um jogador quer jogar.
+
+Exemplo:
+```json
+{
+  "type": "invite_request",
+  "data": {
+    "from_nickname": "Jogador1",
+    "request_id": "req-1"
+  }
+}
+```
+
+3. Mensagem de Resposta ao Convite
+
+Tipo: `invite_rejected`
+
+Descrição: Enviada ao jogador que fez o convite se o oponente rejeitar o convite.
+
+Exemplo:
+```json
+{
+  "type": "invite_rejected",
+  "data": {
+    "message": "Player Jogador2 rejected your invite."
+  }
+}
+```
+
+4. Mensagem de Início de Jogo
+
+Tipo: `game_start`
+
+Descrição: Enviada a ambos os jogadores quando o jogo começa.
+
+Exemplo:
+```json
+{
+  "type": "game_start",
+  "data": {
+    "message": "O jogo começou! Faça sua jogada: pedra, papel ou tesoura."
+  }
+}
+```
+
+5. Mensagem de Movimento
+
+Tipo: `move`
+
+Descrição: Enviada quando um jogador faz sua jogada no jogo.
+
+Exemplo:
+```json
+{
+  "type": "move",
+  "data": {
+    "move": "pedra"
+  }
+}
+```
+
+6. Mensagem de Resultado do Jogo
+
+Tipo: `game_result`
+
+Descrição: Enviada após ambos os jogadores realizarem suas jogadas, informando o resultado do jogo.
+
+Exemplo:
+```json
+{
+  "type": "game_result",
+  "data": {
+    "Jogador1": "pedra",
+    "Jogador2": "tesoura",
+    "winner": "Jogador1"
+  }
+}
+```
+
+7. Mensagem de Timeout
+
+Tipo: `timeout`
+
+Descrição: Enviada quando o jogo é encerrado devido à inatividade de um dos jogadores.
+
+Exemplo:
+```json
+{
+  "type": "timeout",
+  "data": {
+    "message": "The game has ended due to inactivity."
+  }
+}
+```
+
+8. Mensagem de Erro
+
+Tipo: `error`
+
+Descrição: Enviada em caso de erro, como quando um jogador tenta convidar um oponente que não existe.
+
+Exemplo:
+```json
+{
+  "type": "error",
+  "data": {
+    "message": "Player not found."
+  }
+}
+```
+
+### Mensagens Enviadas do Cliente para o Servidor
+
+1. Mensagem de Solicitação de Conexão
+
+   Tipo: `connect_request`
+
+   Descrição: Enviada quando um jogador solicita conexão ao servidor, incluindo seu nickname.
+
+   Exemplo:
+   ```json
+   {
+     "type": "connect_request",
+     "data": {
+       "nickname": "Jogador1"
+     }
+   }
+   ```
+
+2. Mensagem de Solicitação de Oponente
+
+   Tipo: `opponent_request`
+
+   Descrição: Enviada quando um jogador deseja convidar outro jogador para uma partida.
+
+   Exemplo:
+   ```json
+   {
+     "type": "opponent_request",
+     "data": {
+       "nickname": "Jogador1",
+       "opponent_nickname": "Jogador2"
+     }
+   }
+   ```
+
+3. Mensagem de Resposta ao Convite
+
+   Tipo: `invite_response`
+
+   Descrição: Enviada em resposta a um convite de jogo, informando se o convite foi aceito ou rejeitado.
+
+   Exemplo de Aceitação:
+   ```json
+   {
+     "type": "invite_response",
+     "data": {
+       "request_id": "req-1",
+       "accepted": true
+     }
+   }
+   ```
+
+   Exemplo de Rejeição:
+   ```json
+   {
+     "type": "invite_response",
+     "data": {
+       "accepted": false
+     }
+   }
+   ```
+
+4. Mensagem de Movimento
+
+   Tipo: `move`
+
+   Descrição: Enviada quando um jogador faz sua jogada no jogo (por exemplo, "pedra", "papel" ou "tesoura").
+
+   Exemplo:
+   ```json
+   {
+     "type": "move",
+     "data": {
+       "move": "pedra"
+     }
+   }
+   ```
+
+5. Mensagem de Desconexão
+
+   Tipo: `disconnect`
+
+   Descrição: Enviada quando um jogador decide desconectar do servidor.
+
+   Exemplo:
+   ```json
+   {
+     "type": "disconnect",
+     "data": {
+       "nickname": "Jogador1"
+     }
+   }
+   ```
