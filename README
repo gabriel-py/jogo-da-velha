@@ -1,12 +1,10 @@
-### Mensagens do Servidor para o Cliente:
+# Mensagens do Servidor para o Cliente
 
-1. Mensagem de Conexão Bem-Sucedida
+## 1. Mensagem de Conexão Bem-Sucedida
+- **Tipo:** `connect_response`
+- **Descrição:** Enviada quando um jogador se conecta com sucesso ao servidor.
 
-Tipo: `connect_response`
-
-Descrição: Enviada quando um jogador se conecta com sucesso ao servidor.
-
-Exemplo:
+**Exemplo:**
 ```json
 {
   "type": "connect_response",
@@ -17,13 +15,11 @@ Exemplo:
 }
 ```
 
-2. Mensagem de Convite para Jogo
+## 2. Mensagem de Convite para Jogo
+- **Tipo:** `invite_request`
+- **Descrição:** Enviada para o oponente convidado, informando que um jogador quer jogar.
 
-Tipo: `invite_request`
-
-Descrição: Enviada para o oponente convidado, informando que um jogador quer jogar.
-
-Exemplo:
+**Exemplo:**
 ```json
 {
   "type": "invite_request",
@@ -34,13 +30,11 @@ Exemplo:
 }
 ```
 
-3. Mensagem de Resposta ao Convite
+## 3. Mensagem de Resposta ao Convite
+- **Tipo:** `invite_rejected`
+- **Descrição:** Enviada ao jogador que fez o convite se o oponente rejeitar o convite.
 
-Tipo: `invite_rejected`
-
-Descrição: Enviada ao jogador que fez o convite se o oponente rejeitar o convite.
-
-Exemplo:
+**Exemplo:**
 ```json
 {
   "type": "invite_rejected",
@@ -50,13 +44,11 @@ Exemplo:
 }
 ```
 
-4. Mensagem de Início de Jogo
+## 4. Mensagem de Início de Jogo
+- **Tipo:** `game_start`
+- **Descrição:** Enviada a ambos os jogadores quando o jogo começa.
 
-Tipo: `game_start`
-
-Descrição: Enviada a ambos os jogadores quando o jogo começa.
-
-Exemplo:
+**Exemplo:**
 ```json
 {
   "type": "game_start",
@@ -66,13 +58,11 @@ Exemplo:
 }
 ```
 
-5. Mensagem de Movimento
+## 5. Mensagem de Movimento
+- **Tipo:** `move`
+- **Descrição:** Enviada quando um jogador faz sua jogada no jogo.
 
-Tipo: `move`
-
-Descrição: Enviada quando um jogador faz sua jogada no jogo.
-
-Exemplo:
+**Exemplo:**
 ```json
 {
   "type": "move",
@@ -82,13 +72,11 @@ Exemplo:
 }
 ```
 
-6. Mensagem de Resultado do Jogo
+## 6. Mensagem de Resultado do Jogo
+- **Tipo:** `game_result`
+- **Descrição:** Enviada após ambos os jogadores realizarem suas jogadas, informando o resultado do jogo.
 
-Tipo: `game_result`
-
-Descrição: Enviada após ambos os jogadores realizarem suas jogadas, informando o resultado do jogo.
-
-Exemplo:
+**Exemplo:**
 ```json
 {
   "type": "game_result",
@@ -100,13 +88,11 @@ Exemplo:
 }
 ```
 
-7. Mensagem de Timeout
+## 7. Mensagem de Timeout
+- **Tipo:** `timeout`
+- **Descrição:** Enviada quando o jogo é encerrado devido à inatividade de um dos jogadores.
 
-Tipo: `timeout`
-
-Descrição: Enviada quando o jogo é encerrado devido à inatividade de um dos jogadores.
-
-Exemplo:
+**Exemplo:**
 ```json
 {
   "type": "timeout",
@@ -116,13 +102,11 @@ Exemplo:
 }
 ```
 
-8. Mensagem de Erro
+## 8. Mensagem de Erro
+- **Tipo:** `error`
+- **Descrição:** Enviada em caso de erro, como quando um jogador tenta convidar um oponente que não existe.
 
-Tipo: `error`
-
-Descrição: Enviada em caso de erro, como quando um jogador tenta convidar um oponente que não existe.
-
-Exemplo:
+**Exemplo:**
 ```json
 {
   "type": "error",
@@ -132,96 +116,88 @@ Exemplo:
 }
 ```
 
-### Mensagens Enviadas do Cliente para o Servidor
+---
 
-1. Mensagem de Solicitação de Conexão
+# Mensagens Enviadas do Cliente para o Servidor
 
-   Tipo: `connect_request`
+## 1. Mensagem de Solicitação de Conexão
+- **Tipo:** `connect_request`
+- **Descrição:** Enviada quando um jogador solicita conexão ao servidor, incluindo seu nickname.
 
-   Descrição: Enviada quando um jogador solicita conexão ao servidor, incluindo seu nickname.
+**Exemplo:**
+```json
+{
+  "type": "connect_request",
+  "data": {
+    "nickname": "Jogador1"
+  }
+}
+```
 
-   Exemplo:
-   ```json
-   {
-     "type": "connect_request",
-     "data": {
-       "nickname": "Jogador1"
-     }
-   }
-   ```
+## 2. Mensagem de Solicitação de Oponente
+- **Tipo:** `opponent_request`
+- **Descrição:** Enviada quando um jogador deseja convidar outro jogador para uma partida.
 
-2. Mensagem de Solicitação de Oponente
+**Exemplo:**
+```json
+{
+  "type": "opponent_request",
+  "data": {
+    "nickname": "Jogador1",
+    "opponent_nickname": "Jogador2"
+  }
+}
+```
 
-   Tipo: `opponent_request`
+## 3. Mensagem de Resposta ao Convite
+- **Tipo:** `invite_response`
+- **Descrição:** Enviada em resposta a um convite de jogo, informando se o convite foi aceito ou rejeitado.
 
-   Descrição: Enviada quando um jogador deseja convidar outro jogador para uma partida.
+**Exemplo de Aceitação:**
+```json
+{
+  "type": "invite_response",
+  "data": {
+    "request_id": "req-1",
+    "accepted": true
+  }
+}
+```
 
-   Exemplo:
-   ```json
-   {
-     "type": "opponent_request",
-     "data": {
-       "nickname": "Jogador1",
-       "opponent_nickname": "Jogador2"
-     }
-   }
-   ```
+**Exemplo de Rejeição:**
+```json
+{
+  "type": "invite_response",
+  "data": {
+    "accepted": false
+  }
+}
+```
 
-3. Mensagem de Resposta ao Convite
+## 4. Mensagem de Movimento
+- **Tipo:** `move`
+- **Descrição:** Enviada quando um jogador faz sua jogada no jogo (por exemplo, "pedra", "papel" ou "tesoura").
 
-   Tipo: `invite_response`
+**Exemplo:**
+```json
+{
+  "type": "move",
+  "data": {
+    "move": "pedra"
+  }
+}
+```
 
-   Descrição: Enviada em resposta a um convite de jogo, informando se o convite foi aceito ou rejeitado.
+## 5. Mensagem de Desconexão
+- **Tipo:** `disconnect`
+- **Descrição:** Enviada quando um jogador decide desconectar do servidor.
 
-   Exemplo de Aceitação:
-   ```json
-   {
-     "type": "invite_response",
-     "data": {
-       "request_id": "req-1",
-       "accepted": true
-     }
-   }
-   ```
-
-   Exemplo de Rejeição:
-   ```json
-   {
-     "type": "invite_response",
-     "data": {
-       "accepted": false
-     }
-   }
-   ```
-
-4. Mensagem de Movimento
-
-   Tipo: `move`
-
-   Descrição: Enviada quando um jogador faz sua jogada no jogo (por exemplo, "pedra", "papel" ou "tesoura").
-
-   Exemplo:
-   ```json
-   {
-     "type": "move",
-     "data": {
-       "move": "pedra"
-     }
-   }
-   ```
-
-5. Mensagem de Desconexão
-
-   Tipo: `disconnect`
-
-   Descrição: Enviada quando um jogador decide desconectar do servidor.
-
-   Exemplo:
-   ```json
-   {
-     "type": "disconnect",
-     "data": {
-       "nickname": "Jogador1"
-     }
-   }
-   ```
+**Exemplo:**
+```json
+{
+  "type": "disconnect",
+  "data": {
+    "nickname": "Jogador1"
+  }
+}
+```
