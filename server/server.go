@@ -304,7 +304,7 @@ func startGame(player1, player2 *Player) {
 	select {
 	case move1 := <-moveChan1:
 		player1.Move = move1
-	case <-time.After(15 * time.Second):
+	case <-time.After(90 * time.Second):
 		endGameDueToTimeout(player1, player2)
 		return
 	}
@@ -312,7 +312,7 @@ func startGame(player1, player2 *Player) {
 	select {
 	case move2 := <-moveChan2:
 		player2.Move = move2
-	case <-time.After(15 * time.Second):
+	case <-time.After(90 * time.Second):
 		endGameDueToTimeout(player1, player2)
 		return
 	}
