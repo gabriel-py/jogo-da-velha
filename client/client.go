@@ -21,7 +21,10 @@ type Invite struct {
 	RequestID    string
 }
 
-var currentInvite *Invite // Variável para armazenar o convite atual
+var inGame bool
+var currentInvite *Invite            // Variável para armazenar o convite atual
+var inputChannel = make(chan string) // Canal para simular entrada
+var resultChannel = make(chan bool)
 
 func main() {
 	// Conecta ao servidor
@@ -47,7 +50,14 @@ func main() {
 	// Recebe a confirmação do servidor antes de continuar
 	go listenForMessages(conn)
 
-	// Loop principal do cliente
+	// Goroutine para ler a entrada do usuário
+	go func() {
+		for {
+			input := readInput()
+			inputChannel <- input // Envia a entrada para o canal
+		}
+	}()
+
 	for {
 		fmt.Println("\nMenu:")
 		fmt.Println("1. Convidar Oponente")
@@ -55,12 +65,12 @@ func main() {
 		fmt.Println("3. Sair")
 		fmt.Print("Escolha uma opção: ")
 
-		option := readInput()
+		option := <-inputChannel // Lê a entrada do canal
 
 		switch option {
 		case "1":
 			fmt.Print("Digite o nickname do oponente: ")
-			opponent := readInput()
+			opponent := <-inputChannel // Lê a entrada do canal
 
 			// Envia a solicitação para iniciar o jogo com o oponente escolhido
 			sendMessage(conn, Message{
@@ -77,6 +87,22 @@ func main() {
 		case "3":
 			fmt.Println("Saindo...")
 			return
+
+		case "4":
+			fmt.Println("Escolha sua jogada: pedra, papel ou tesoura")
+
+			move := <-inputChannel
+
+			fmt.Println("Você escolheu: ", move)
+
+			sendMessage(conn, Message{
+				Type: "move",
+				Data: map[string]string{
+					"move": move,
+				},
+			})
+
+			<-resultChannel
 
 		default:
 			fmt.Println("Opção inválida, tente novamente.")
@@ -137,14 +163,10 @@ func handleServerMessage(conn net.Conn, message Message) {
 		fmt.Printf("Convite recebido de %s. Você pode responder na opção 2.\n", fromNickname)
 
 	case "game_start":
-		fmt.Println("O jogo começou! Escolha sua jogada: pedra, papel ou tesoura")
-		move := readInput()
-		sendMessage(conn, Message{
-			Type: "move",
-			Data: map[string]string{
-				"move": move,
-			},
-		})
+		inGame = true
+
+		// Simula a opção 4 (iniciar o jogo)
+		inputChannel <- "4" // Envia "4" para o canal, como se o usuário tivesse digitado
 
 	case "game_result":
 		data := message.Data.(map[string]interface{})
@@ -152,6 +174,7 @@ func handleServerMessage(conn net.Conn, message Message) {
 		player2Move := data["player2_move"].(string)
 		winner := data["winner"].(string)
 		fmt.Printf("Jogador 1 escolheu: %s, Jogador 2 escolheu: %s. Vencedor: %s\n", player1Move, player2Move, winner)
+		resultChannel <- true
 
 	case "timeout":
 		fmt.Println("O jogo terminou devido à inatividade.")
@@ -169,7 +192,7 @@ func handleResponseToInvite(conn net.Conn) {
 	fromNickname := currentInvite.FromNickname
 	fmt.Printf("O jogador %s quer jogar com você. Aceitar? (s/n): ", fromNickname)
 
-	response := readInput() // Responde ao convite
+	response := <-inputChannel // Lê a resposta do canal
 	if strings.ToLower(response) == "s" {
 		sendMessage(conn, Message{
 			Type: "invite_response",
