@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"strings"
 )
 
@@ -59,6 +60,7 @@ func main() {
 	}()
 
 	for {
+		// clearConsole()
 		fmt.Println("\nMenu:")
 		fmt.Println("1. Convidar Oponente")
 		fmt.Println("2. Responder a Convite")
@@ -89,6 +91,7 @@ func main() {
 			return
 
 		case "4":
+			clearConsole()
 			fmt.Println("====== Jogo começou!!! ======")
 			fmt.Println("Escolha sua jogada: pedra, papel ou tesoura")
 
@@ -161,7 +164,7 @@ func handleServerMessage(conn net.Conn, message Message, nickname string) {
 
 		// Armazena o convite recebido
 		currentInvite = &Invite{FromNickname: fromNickname, RequestID: requestID}
-		fmt.Printf("Convite recebido de %s. Você pode responder na opção 2.\n", fromNickname)
+		fmt.Printf("Convite recebido de %s. Clique 2 para responder.\n", fromNickname)
 
 	case "game_start":
 		inGame = true
@@ -247,4 +250,10 @@ func readInput() string {
 	reader := bufio.NewReader(os.Stdin)
 	text, _ := reader.ReadString('\n')
 	return strings.TrimSpace(text)
+}
+
+func clearConsole() {
+	cmd := exec.Command("clear")
+	cmd.Stdout = os.Stdout
+	cmd.Run()
 }
