@@ -387,22 +387,22 @@ func determineWinner(player1, player2 *Player) {
 
 func determineWinnerLogic(move1, move2 string) string {
 	switch move1 {
-	case "rock":
-		if move2 == "scissors" {
+	case "pedra":
+		if move2 == "tesoura" {
 			return "player1"
-		} else if move2 == "paper" {
+		} else if move2 == "papel" {
 			return "player2"
 		}
-	case "paper":
-		if move2 == "rock" {
+	case "papel":
+		if move2 == "pedra" {
 			return "player1"
-		} else if move2 == "scissors" {
+		} else if move2 == "tesoura" {
 			return "player2"
 		}
-	case "scissors":
-		if move2 == "paper" {
+	case "tesoura":
+		if move2 == "papel" {
 			return "player1"
-		} else if move2 == "rock" {
+		} else if move2 == "pedra" {
 			return "player2"
 		}
 	}
