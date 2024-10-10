@@ -48,7 +48,7 @@ func main() {
 	})
 
 	// Recebe a confirmação do servidor antes de continuar
-	go listenForMessages(conn)
+	go listenForMessages(conn, nickname)
 
 	// Goroutine para ler a entrada do usuário
 	go func() {
@@ -89,6 +89,7 @@ func main() {
 			return
 
 		case "4":
+			fmt.Println("====== Jogo começou!!! ======")
 			fmt.Println("Escolha sua jogada: pedra, papel ou tesoura")
 
 			move := <-inputChannel
@@ -110,7 +111,7 @@ func main() {
 	}
 }
 
-func listenForMessages(conn net.Conn) {
+func listenForMessages(conn net.Conn, nickname string) {
 	reader := bufio.NewReader(conn)
 	for {
 		messageStr, err := reader.ReadString('\n')
@@ -126,11 +127,11 @@ func listenForMessages(conn net.Conn) {
 			continue
 		}
 
-		handleServerMessage(conn, message)
+		handleServerMessage(conn, message, nickname)
 	}
 }
 
-func handleServerMessage(conn net.Conn, message Message) {
+func handleServerMessage(conn net.Conn, message Message, nickname string) {
 	fmt.Println("\n\nMensagem do servidor: ", message)
 	switch message.Type {
 	case "connect_response":
@@ -150,7 +151,7 @@ func handleServerMessage(conn net.Conn, message Message) {
 			fmt.Println("Erro:", data["message"])
 			os.Exit(1)
 		} else {
-			fmt.Println("Convite enviado para o oponente.")
+			fmt.Println("Aguardando resposta do oponente...")
 		}
 
 	case "invite_request":
@@ -170,11 +171,35 @@ func handleServerMessage(conn net.Conn, message Message) {
 
 	case "game_result":
 		data := message.Data.(map[string]interface{})
-		player1Move := data["player1_move"].(string)
-		player2Move := data["player2_move"].(string)
-		winner := data["winner"].(string)
-		fmt.Printf("Jogador 1 escolheu: %s, Jogador 2 escolheu: %s. Vencedor: %s\n", player1Move, player2Move, winner)
-		resultChannel <- true
+
+		var player1Nickname, player2Nickname, player1Move, player2Move string
+		var winner string
+
+		for nickname, move := range data {
+			if nickname == "winner" {
+				winner = move.(string)
+			} else {
+				if player1Nickname == "" {
+					player1Nickname = nickname
+					player1Move = move.(string)
+				} else {
+					player2Nickname = nickname
+					player2Move = move.(string)
+				}
+			}
+		}
+
+		// Exibindo o resultado do jogo
+		fmt.Printf("%s escolheu: %s, %s escolheu: %s. Vencedor: %s\n", player1Nickname, player1Move, player2Nickname, player2Move, winner)
+
+		// Encerrando a conexão
+		sendMessage(conn, Message{
+			Type: "disconnect",
+			Data: map[string]string{
+				"nickname": nickname,
+			},
+		})
+		os.Exit(0)
 
 	case "timeout":
 		fmt.Println("O jogo terminou devido à inatividade.")

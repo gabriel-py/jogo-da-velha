@@ -112,6 +112,13 @@ func handleConnection(conn net.Conn) {
 			handleOpponentNickname(conn, nickname, opponentNickname)
 		case "invite_response":
 			handleInviteResponse(conn, message)
+		case "disconnect":
+			var data map[string]string
+			rawData, _ := json.Marshal(message.Data)
+			json.Unmarshal(rawData, &data)
+
+			nickname := data["nickname"]
+			handleDisconnect(conn, nickname)
 		}
 	}
 }
@@ -213,7 +220,7 @@ func handleOpponentNickname(conn net.Conn, nickname, opponentNickname string) {
 	// Verifica se o oponente existe
 	opponent, exists := players[opponentNickname]
 	if !exists {
-		// Envia mensagem de erro
+		// Envia mensagem de erro para o jogador que fez a requisição
 		sendMessage(conn, Message{
 			Type: "opponent_response",
 			Data: map[string]string{
@@ -242,6 +249,15 @@ func handleOpponentNickname(conn net.Conn, nickname, opponentNickname string) {
 		Data: map[string]string{
 			"from_nickname": nickname,
 			"request_id":    requestID, // Enviar o ID da solicitação
+		},
+	})
+
+	// Envia mensagem de sucesso para o jogador que fez a requisição
+	sendMessage(conn, Message{
+		Type: "opponent_response",
+		Data: map[string]string{
+			"status":  "success",
+			"message": "Request sent to opponent",
 		},
 	})
 
@@ -360,53 +376,48 @@ func determineWinner(player1, player2 *Player) {
 		return
 	}
 
-	winner := determineWinnerLogic(player1.Move, player2.Move)
+	winner := determineWinnerLogic(player1, player2)
 
 	result = fmt.Sprintf("Player %s wins!", winner)
-	sendMessage(player1.Conn, Message{
+	message := Message{
 		Type: "game_result",
 		Data: map[string]string{
-			"player1_move": player1.Move,
-			"player2_move": player2.Move,
-			"winner":       winner,
+			player1.Nickname: player1.Move,
+			player2.Nickname: player2.Move,
+			"winner":         winner,
 		},
-	})
-	sendMessage(player2.Conn, Message{
-		Type: "game_result",
-		Data: map[string]string{
-			"player1_move": player1.Move,
-			"player2_move": player2.Move,
-			"winner":       winner,
-		},
-	})
+	}
+
+	sendMessage(player1.Conn, message)
+	sendMessage(player2.Conn, message)
 
 	// Após o jogo, desconectar os clientes
 	player1.Conn.Close()
 	player2.Conn.Close()
 }
 
-func determineWinnerLogic(move1, move2 string) string {
-	switch move1 {
+func determineWinnerLogic(player1, player2 *Player) string {
+	switch player1.Move {
 	case "pedra":
-		if move2 == "tesoura" {
-			return "player1"
-		} else if move2 == "papel" {
-			return "player2"
+		if player2.Move == "tesoura" {
+			return player1.Nickname
+		} else if player2.Move == "papel" {
+			return player2.Nickname
 		}
 	case "papel":
-		if move2 == "pedra" {
-			return "player1"
-		} else if move2 == "tesoura" {
-			return "player2"
+		if player2.Move == "pedra" {
+			return player1.Nickname
+		} else if player2.Move == "tesoura" {
+			return player2.Nickname
 		}
 	case "tesoura":
-		if move2 == "papel" {
-			return "player1"
-		} else if move2 == "pedra" {
-			return "player2"
+		if player2.Move == "papel" {
+			return player1.Nickname
+		} else if player2.Move == "pedra" {
+			return player2.Nickname
 		}
 	}
-	return "tie"
+	return "empate"
 }
 
 func endGameDueToTimeout(player1, player2 *Player) {
@@ -430,4 +441,27 @@ func endGameDueToTimeout(player1, player2 *Player) {
 func sendMessage(conn net.Conn, message Message) {
 	messageBytes, _ := json.Marshal(message)
 	conn.Write(append(messageBytes, '\n')) // Envia a mensagem com nova linha
+}
+
+func handleDisconnect(conn net.Conn, nickname string) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	player, exists := players[nickname]
+	if !exists {
+		return
+	}
+
+	player.Conn.Close()
+
+	delete(players, nickname)
+
+	sendMessage(conn, Message{
+		Type: "disconnect_response",
+		Data: map[string]string{
+			"message": "Você se desconectou com sucesso.",
+		},
+	})
+
+	fmt.Printf("Jogador %s desconectado.\n", nickname)
 }
