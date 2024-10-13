@@ -152,7 +152,6 @@ func handleServerMessage(conn net.Conn, message Message, nickname string) {
 		status := data["status"].(string)
 		if status == "error" {
 			fmt.Println("Erro:", data["message"])
-			os.Exit(1)
 		} else {
 			fmt.Println("Aguardando resposta do oponente...")
 		}
