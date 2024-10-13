@@ -27,9 +27,11 @@ var currentInvite *Invite            // Variável para armazenar o convite atual
 var inputChannel = make(chan string) // Canal para simular entrada
 var resultChannel = make(chan bool)
 
+const serverAddress = "localhost:8080"
+
 func main() {
 	// Conecta ao servidor
-	conn, err := net.Dial("tcp", "localhost:8080")
+	conn, err := net.Dial("tcp", serverAddress)
 	if err != nil {
 		fmt.Println("Erro ao conectar ao servidor:", err)
 		os.Exit(1)
