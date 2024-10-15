@@ -77,7 +77,6 @@ func handleConnection(conn net.Conn) {
 
 	reader := bufio.NewReader(conn)
 
-	// Recebe a primeira mensagem do cliente (nickname + oponente)
 	for {
 		messageStr, err := reader.ReadString('\n')
 		if err != nil {
@@ -85,41 +84,45 @@ func handleConnection(conn net.Conn) {
 			return
 		}
 
-		var message Message
-		err = json.Unmarshal([]byte(messageStr), &message)
-		if err != nil {
-			fmt.Println("Erro ao deserializar a mensagem:", err)
-			return
-		}
+		handleMessage(conn, messageStr)
+	}
+}
 
-		fmt.Println("Mensagem recebida: ", message)
+func handleMessage(conn net.Conn, messageStr string) {
+	var message Message
+	err := json.Unmarshal([]byte(messageStr), &message)
+	if err != nil {
+		fmt.Println("Erro ao deserializar a mensagem:", err)
+		return
+	}
 
-		switch message.Type {
-		case "connect_request":
-			var data map[string]string
-			rawData, _ := json.Marshal(message.Data) // Converte interface{} para JSON
-			json.Unmarshal(rawData, &data)           // Deserializa para map[string]string
+	fmt.Println("Mensagem recebida: ", message)
 
-			nickname := data["nickname"]
-			handleConnectRequest(conn, nickname)
-		case "opponent_request":
-			var data map[string]string
-			rawData, _ := json.Marshal(message.Data)
-			json.Unmarshal(rawData, &data)
+	switch message.Type {
+	case "connect_request":
+		var data map[string]string
+		rawData, _ := json.Marshal(message.Data)
+		json.Unmarshal(rawData, &data)
 
-			nickname := data["nickname"]
-			opponentNickname := data["opponent_nickname"]
-			handleOpponentNickname(conn, nickname, opponentNickname)
-		case "invite_response":
-			handleInviteResponse(conn, message)
-		case "disconnect":
-			var data map[string]string
-			rawData, _ := json.Marshal(message.Data)
-			json.Unmarshal(rawData, &data)
+		nickname := data["nickname"]
+		handleConnectRequest(conn, nickname)
+	case "opponent_request":
+		var data map[string]string
+		rawData, _ := json.Marshal(message.Data)
+		json.Unmarshal(rawData, &data)
 
-			nickname := data["nickname"]
-			handleDisconnect(conn, nickname)
-		}
+		nickname := data["nickname"]
+		opponentNickname := data["opponent_nickname"]
+		handleOpponentNickname(conn, nickname, opponentNickname)
+	case "invite_response":
+		handleInviteResponse(conn, message)
+	case "disconnect":
+		var data map[string]string
+		rawData, _ := json.Marshal(message.Data)
+		json.Unmarshal(rawData, &data)
+
+		nickname := data["nickname"]
+		handleDisconnect(conn, nickname)
 	}
 }
 
@@ -156,7 +159,6 @@ func handleInviteResponse(conn net.Conn, message Message) {
 		opponent := players[opponentRequest.Opponent]
 
 		if player == nil || opponent == nil {
-			// Caso algum jogador tenha desconectado
 			sendMessage(conn, Message{
 				Type: "error",
 				Data: map[string]string{
@@ -166,7 +168,6 @@ func handleInviteResponse(conn net.Conn, message Message) {
 			return
 		}
 
-		// Inicia o jogo
 		sendMessage(player.Conn, Message{
 			Type: "game_start",
 			Data: map[string]string{
@@ -190,6 +191,7 @@ func handleInviteResponse(conn net.Conn, message Message) {
 				"message": "O jogador " + opponentRequest.Opponent + " recusou seu convite.",
 			},
 		})
+		delete(inviteWait, opponentRequest.Opponent)
 	}
 
 	// Remove a solicitação do map após o processamento
@@ -296,6 +298,8 @@ func handleOpponentNickname(conn net.Conn, nickname, opponentNickname string) {
 					"message": "Player " + opponentNickname + " rejected your invite.",
 				},
 			})
+			delete(inviteWait, opponentNickname)
+			return
 		}
 	case <-time.After(120 * time.Second):
 		// Timeout de resposta
@@ -306,6 +310,9 @@ func handleOpponentNickname(conn net.Conn, nickname, opponentNickname string) {
 			},
 		})
 	}
+
+	// Remove a solicitação do map após o processamento
+	delete(opponentRequests, requestID)
 }
 
 func startGame(player1, player2 *Player) {

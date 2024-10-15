@@ -93,6 +93,7 @@ func main() {
 			return
 
 		case "4":
+			clearInputChannel() // Limpa o canal de entradas antigas
 			clearConsole()
 			fmt.Println("====== Jogo começou!!! ======")
 			fmt.Println("Escolha sua jogada: pedra, papel ou tesoura")
@@ -110,8 +111,21 @@ func main() {
 
 			<-resultChannel
 
+		case "5":
+			continue
+
 		default:
 			fmt.Println("Opção inválida, tente novamente.")
+		}
+	}
+}
+
+func clearInputChannel() {
+	for {
+		select {
+		case <-inputChannel:
+		default:
+			return
 		}
 	}
 }
@@ -166,6 +180,9 @@ func handleServerMessage(conn net.Conn, message Message, nickname string) {
 		// Armazena o convite recebido
 		currentInvite = &Invite{FromNickname: fromNickname, RequestID: requestID}
 		fmt.Printf("Convite recebido de %s. Clique 2 para responder.\n", fromNickname)
+
+	case "invite_rejected":
+		inputChannel <- "5"
 
 	case "game_start":
 		inGame = true
@@ -233,8 +250,9 @@ func handleResponseToInvite(conn net.Conn) {
 	} else {
 		sendMessage(conn, Message{
 			Type: "invite_response",
-			Data: map[string]bool{
-				"accepted": false,
+			Data: map[string]interface{}{
+				"request_id": currentInvite.RequestID,
+				"accepted":   false,
 			},
 		})
 	}
