@@ -105,7 +105,8 @@ func main() {
 			sendMessage(conn, Message{
 				Type: "move",
 				Data: map[string]string{
-					"move": move,
+					"move":     move,
+					"nickname": nickname,
 				},
 			})
 
